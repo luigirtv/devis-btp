@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Devis BTP
 
-## Getting Started
+Application web de devis et de factures pour un artisan du bâtiment, pensée pour quelqu'un qui n'est pas à l'aise avec l'informatique : gros boutons, une action à la fois, sauvegarde automatique, aucun jargon.
 
-First, run the development server:
+## Ce qu'elle fait
+
+- **Clients** : fiche simple (nom, téléphone, e-mail, adresse), particulier ou professionnel.
+- **Catalogue de prestations** : les ouvrages habituels avec leur prix et leur unité, ajoutés au devis en un appui.
+- **Devis** : brouillon → envoyé → accepté / refusé. Numérotation automatique `D-2026-0001` à l'envoi. Lignes libres, titres de parties, commentaires, remise globale, date de début et durée des travaux, cadre « Bon pour accord ».
+- **Factures** : depuis un devis accepté, **facture d'acompte** (pourcentage au choix) puis **facture de solde** qui déduit l'acompte, ou facture de la totalité. Facture libre possible. Numérotation continue et chronologique `F-2026-0001`, document figé une fois validé ; annulation par **avoir**.
+- **PDF** propre (A4) avec toutes les mentions obligatoires : SIRET, immatriculation, assurance décennale, « TVA non applicable, art. 293 B du CGI » (ou TVA par taux si assujetti), pénalités de retard, IBAN.
+- **Envoi par e-mail** avec le PDF joint (Brevo), ou téléchargement + ouverture de la messagerie si l'envoi n'est pas configuré.
+- **Suivi** : devis en attente, factures à encaisser et en retard, marquage « payée » avec date et moyen de paiement.
+- **Chiffre d'affaires** encaissé par mois et par trimestre, séparé **main-d'œuvre / fournitures** (les deux cases de la déclaration URSSAF de l'auto-entrepreneur).
+
+## Stack
+
+Next.js 16 (App Router, `src/proxy.ts`), Tailwind 4, Supabase (Auth + Postgres, RLS par compte), `@react-pdf/renderer`, Brevo pour l'e-mail. Un compte Supabase = une entreprise : l'app peut servir plusieurs artisans sans rien changer.
+
+## Démarrer
+
+Voir [DEPLOIEMENT.md](DEPLOIEMENT.md). En résumé : créer le projet Supabase, coller `supabase/schema.sql`, remplir `.env.local`, `npm run seed`, `npm run dev`.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev        # http://localhost:3000
+npm run typecheck  # types (next typegen + tsc)
+npm run lint
+npm test           # calculs des totaux, remise, TVA, acomptes, avoirs
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Sans base, les écrans se regardent avec des données d'exemple sur `/apercu` (désactivé en production).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Organisation du code
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Dossier | Rôle |
+|---|---|
+| `src/lib/calculs.ts` | Totaux, remise, TVA, répartition MO/fournitures, lignes d'acompte et d'avoir (testé) |
+| `src/lib/documents.ts` | Règles métier côté serveur : création, modification, validation/numérotation |
+| `src/lib/pdf/` | Mise en page du PDF |
+| `src/app/api/` | Routes API (session Supabase, RLS active) |
+| `src/components/` | Écrans : `EditeurDocument`, `FicheDocument`, clients, catalogue, réglages |
+| `supabase/schema.sql` | Tables, RLS, fonction `numeroter_document` |
+| `scripts/seed.mjs` | Compte de l'artisan + paramètres + catalogue de départ |

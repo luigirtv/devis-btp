@@ -1,26 +1,85 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-fond: #f3f5f8;
+  --color-carte: #ffffff;
+  --color-encre: #0f1c2e;
+  --color-muet: #5f6f83;
+  --color-ligne: #dde3ea;
+  --color-marine: #0f2a4a;
+  --color-accent: #1d6ff2;
+  --color-accent-fonce: #1557c4;
+  --color-accent-fond: #e8f0fe;
+  --color-ok: #15803d;
+  --color-ok-fond: #dcfce7;
+  --color-alerte: #b45309;
+  --color-alerte-fond: #fef3c7;
+  --color-erreur: #b91c1c;
+  --color-erreur-fond: #fee2e2;
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --shadow-carte: 0 1px 2px rgba(15, 28, 46, 0.06), 0 4px 16px rgba(15, 28, 46, 0.05);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: light;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-fond);
+  color: var(--color-encre);
+  font-family: var(--font-sans);
+  overscroll-behavior-y: none;
+}
+
+/* Gros boutons, gros textes : l'utilisateur n'est pas à l'aise avec l'informatique. */
+@utility btn {
+  @apply inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl px-5 text-lg font-semibold transition active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100 cursor-pointer;
+}
+@utility btn-primaire {
+  @apply btn bg-accent text-white shadow-carte hover:bg-accent-fonce;
+}
+@utility btn-secondaire {
+  @apply btn border-2 border-ligne bg-carte text-encre hover:border-muet;
+}
+@utility btn-ok {
+  @apply btn bg-ok text-white hover:brightness-95;
+}
+@utility btn-danger {
+  @apply btn bg-erreur-fond text-erreur hover:brightness-95;
+}
+@utility btn-petit {
+  @apply min-h-11 px-4 text-base;
+}
+@utility carte {
+  @apply rounded-2xl border border-ligne bg-carte p-4 shadow-carte;
+}
+@utility champ {
+  @apply block min-h-14 w-full rounded-2xl border-2 border-ligne bg-carte px-4 text-lg text-encre outline-none focus:border-accent disabled:bg-fond disabled:text-muet;
+}
+@utility champ-petit {
+  @apply min-h-12 px-3 text-base;
+}
+@utility pastille {
+  @apply inline-flex items-center rounded-full px-2.5 py-1 text-sm font-semibold whitespace-nowrap;
+}
+@utility etiquette {
+  @apply mb-1 block text-sm font-semibold text-muet;
+}
+
+textarea.champ {
+  @apply py-3 leading-snug;
+}
+select.champ {
+  @apply appearance-none bg-no-repeat pr-10;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%235f6f83' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");
+  background-position: right 0.9rem center;
+}
+input[type="number"].champ {
+  @apply text-right tabular-nums;
+}
+
+@media print {
+  body { background: #fff; }
+  .no-print { display: none !important; }
 }
