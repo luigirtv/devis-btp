@@ -23,7 +23,10 @@ if (!id) {
   id = data.user.id;
   console.log(`Compte créé : ${email}`);
 } else {
-  console.log(`Compte déjà présent : ${email}`);
+  // Compte déjà là : on aligne le mot de passe sur SEED_MDP, pour pouvoir le changer en relançant le seed.
+  const { error } = await sb.auth.admin.updateUserById(id, { password: mdp });
+  if (error) throw error;
+  console.log(`Compte déjà présent : ${email} — mot de passe mis à jour`);
 }
 
 const { data: params } = await sb.from("parametres").select("owner_id").eq("owner_id", id).maybeSingle();
