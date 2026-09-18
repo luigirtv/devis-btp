@@ -200,7 +200,6 @@ export default function FicheDocument({ document: d, client, parametres: p, emai
             {p.assujetti_tva ? t.tva_par_taux.map((x) => <div key={x.taux} className="flex justify-between text-muet"><dt>TVA {formatPourcent(x.taux)}</dt><dd className="tabular-nums">{euros(x.montant)}</dd></div>) : <div className="text-sm text-muet">TVA non applicable, art. 293 B du CGI</div>}
             {d.deductions.map((x) => <div key={x.facture_id} className="flex justify-between text-muet"><dt>{x.libelle}</dt><dd className="tabular-nums">- {euros(x.montant_ttc)}</dd></div>)}
             <div className="flex justify-between text-xl font-bold"><dt>{devis ? "Total" : "Net à payer"}</dt><dd className="tabular-nums">{euros(t.net_a_payer)}</dd></div>
-            <p className="text-sm text-muet">Dont main-d'œuvre {euros(t.repartition.main_oeuvre)} et fournitures {euros(t.repartition.fourniture)}.</p>
           </dl>
           {d.notes && <p className="mt-3 rounded-xl bg-fond px-3 py-2 text-muet">{d.notes}</p>}
         </section>

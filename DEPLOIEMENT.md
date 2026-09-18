@@ -79,5 +79,4 @@ Lui montrer une seule chose au début : Accueil → « Nouveau devis » → choi
 
 - **Numérotation** : les factures sont numérotées sans trou, dans l'ordre chronologique, au moment de la validation. Une facture validée ne se modifie plus : on l'annule par un **avoir** (bouton sur la fiche) et on en refait une.
 - **Franchise de TVA** : par défaut aucune TVA n'est facturée, ni sur la main-d'œuvre ni sur le matériel ; la mention légale est ajoutée automatiquement. Si l'artisan dépasse le plafond, cocher « Je facture la TVA » dans « Mon entreprise » : les taux 20 / 10 / 5,5 % apparaissent sur chaque ligne.
-- **URSSAF** : chaque ligne est « main-d'œuvre » ou « fourniture ». La page « Chiffre d'affaires » donne les deux totaux à déclarer (taux de cotisation différents).
 - **Facturation électronique** : à partir de septembre 2027, les factures entre professionnels (client avec SIRET) devront passer par une plateforme agréée. Les factures aux particuliers ne sont pas concernées. À revoir en 2027.

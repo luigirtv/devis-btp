@@ -7,7 +7,7 @@ import Erreur from "@/components/Erreur";
 import { IcoCrayon, IcoLoupe, IcoPlus, IcoPoubelle } from "@/components/Icones";
 import { euros } from "@/lib/format";
 import { formatPourcent } from "@/lib/calculs";
-import { LIBELLE_NATURE, TAUX_TVA, UNITES, type Nature, type Prestation } from "@/lib/types";
+import { TAUX_TVA, UNITES, type Nature, type Prestation } from "@/lib/types";
 
 const VIDE = { libelle: "", description: "", unite: "u", prix_unitaire: 0, nature: "main_oeuvre" as Nature, tva: 0 };
 
@@ -71,7 +71,7 @@ export default function CatalogueClient({ prestations, assujettiTva }: { prestat
           <li key={p.id} className="carte flex items-center gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-lg font-bold">{p.libelle}</p>
-              <p className="text-sm text-muet">{LIBELLE_NATURE[p.nature]}{assujettiTva ? ` · TVA ${formatPourcent(Number(p.tva))}` : ""}{p.description ? ` · ${p.description}` : ""}</p>
+              {(assujettiTva || p.description) && <p className="text-sm text-muet">{[assujettiTva ? `TVA ${formatPourcent(Number(p.tva))}` : "", p.description].filter(Boolean).join(" · ")}</p>}
             </div>
             <p className="shrink-0 text-lg font-bold tabular-nums">{euros(p.prix_unitaire)} <span className="text-sm font-normal text-muet">/ {p.unite}</span></p>
             <button type="button" className="flex h-11 w-11 items-center justify-center rounded-full bg-fond text-muet hover:text-encre" onClick={() => setEdition({ ...p, prix_unitaire: Number(p.prix_unitaire), tva: Number(p.tva) })} aria-label="Modifier"><IcoCrayon /></button>
@@ -102,14 +102,6 @@ export default function CatalogueClient({ prestations, assujettiTva }: { prestat
                   {UNITES.map((u) => <option key={u} value={u}>{u}</option>)}
                 </select>
               </label>
-            </div>
-            <div>
-              <span className="etiquette">Nature (pour l'URSSAF)</span>
-              <div className="flex gap-2">
-                {(["main_oeuvre", "fourniture"] as const).map((n) => (
-                  <button key={n} type="button" onClick={() => setEdition({ ...edition, nature: n })} className={`btn-secondaire btn-petit flex-1 ${edition.nature === n ? "border-accent bg-accent-fond text-accent-fonce" : ""}`}>{LIBELLE_NATURE[n]}</button>
-                ))}
-              </div>
             </div>
             {assujettiTva && (
               <label>

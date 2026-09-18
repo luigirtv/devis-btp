@@ -7,11 +7,9 @@ Application web de devis et de factures pour un artisan du bâtiment, pensée po
 - **Clients** : fiche simple (nom, téléphone, e-mail, adresse), particulier ou professionnel.
 - **Catalogue de prestations** : les ouvrages habituels avec leur prix et leur unité, ajoutés au devis en un appui.
 - **Devis** : brouillon → envoyé → accepté / refusé. Numérotation automatique `D-2026-0001` à l'envoi. Lignes libres, titres de parties, commentaires, remise globale, date de début et durée des travaux, cadre « Bon pour accord ».
-- **Factures** : depuis un devis accepté, **facture d'acompte** (pourcentage au choix) puis **facture de solde** qui déduit l'acompte, ou facture de la totalité. Facture libre possible. Numérotation continue et chronologique `F-2026-0001`, document figé une fois validé ; annulation par **avoir**.
+- **Factures** : une seule facture par chantier, préparée d'un appui depuis le devis accepté. Facture libre possible. Les modalités de paiement (40 / 40 / 20 par défaut) et l'IBAN figurent sur le devis. Numérotation continue et chronologique `F-2026-0001`, document figé une fois validé ; annulation par **avoir**.
 - **PDF** propre (A4) avec toutes les mentions obligatoires : SIRET, immatriculation, assurance décennale, « TVA non applicable, art. 293 B du CGI » (ou TVA par taux si assujetti), pénalités de retard, IBAN.
 - **Envoi par e-mail** avec le PDF joint (Brevo), ou téléchargement + ouverture de la messagerie si l'envoi n'est pas configuré.
-- **Suivi** : devis en attente, factures à encaisser et en retard, marquage « payée » avec date et moyen de paiement.
-- **Chiffre d'affaires** encaissé par mois et par trimestre, séparé **main-d'œuvre / fournitures** (les deux cases de la déclaration URSSAF de l'auto-entrepreneur).
 
 ## Stack
 

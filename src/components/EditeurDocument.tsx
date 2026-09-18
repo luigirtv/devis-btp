@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { appeler } from "@/lib/api";
 import { calculerTotaux, formatPourcent, ligneVide, totalLigne } from "@/lib/calculs";
 import { dateFr, euros, titreDocument } from "@/lib/format";
-import { LIBELLE_NATURE, TAUX_TVA, UNITES, type Client, type DocumentAvecClient, type Ligne, type Parametres, type Prestation } from "@/lib/types";
+import { TAUX_TVA, UNITES, type Client, type DocumentAvecClient, type Ligne, type Parametres, type Prestation } from "@/lib/types";
 import EnTete from "@/components/EnTete";
 import Modale from "@/components/Modale";
 import Erreur from "@/components/Erreur";
@@ -226,11 +226,6 @@ export default function EditeurDocument({ document: initial, clients: clientsIni
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="flex rounded-xl border border-ligne p-0.5" role="radiogroup" aria-label="Nature">
-                        {(["main_oeuvre", "fourniture"] as const).map((n) => (
-                          <button key={n} type="button" role="radio" aria-checked={l.nature === n} onClick={() => majLigne(l.id, { nature: n })} className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${l.nature === n ? "bg-marine text-white" : "text-muet"}`}>{LIBELLE_NATURE[n]}</button>
-                        ))}
-                      </div>
                       {p.assujetti_tva && (
                         <select className="champ champ-petit w-auto min-h-10 py-1 text-sm" value={l.tva} onChange={(e) => majLigne(l.id, { tva: Number(e.target.value) })} aria-label="TVA">
                           {TAUX_TVA.map((t) => <option key={t} value={t}>TVA {formatPourcent(t)}</option>)}
@@ -285,7 +280,6 @@ export default function EditeurDocument({ document: initial, clients: clientsIni
             {initial.deductions.map((d) => <div key={d.facture_id} className="flex justify-between text-muet"><dt>{d.libelle}</dt><dd className="tabular-nums">- {euros(d.montant_ttc)}</dd></div>)}
             <div className="mt-1 flex justify-between border-t border-ligne pt-2 text-2xl font-bold"><dt>{devis ? "Total du devis" : "Net à payer"}</dt><dd className="tabular-nums">{euros(totaux.net_a_payer)}</dd></div>
           </dl>
-          <p className="text-sm text-muet">Dont main-d'œuvre {euros(totaux.repartition.main_oeuvre)} et fournitures {euros(totaux.repartition.fourniture)} (pour votre déclaration URSSAF).</p>
           <label>
             <span className="etiquette">Remarques (visibles sur le document)</span>
             <textarea className="champ" rows={2} value={doc.notes} onChange={(e) => maj({ notes: e.target.value })} placeholder="Ex. Accès par le jardin, travaux le matin uniquement…" />
@@ -342,7 +336,7 @@ export default function EditeurDocument({ document: initial, clients: clientsIni
               <button type="button" onClick={() => ajouterPrestation(pr)} className="flex w-full items-center gap-3 rounded-xl border-2 border-ligne px-4 py-3 text-left hover:border-accent">
                 <div className="min-w-0 flex-1">
                   <p className="text-lg font-semibold">{pr.libelle}</p>
-                  <p className="text-sm text-muet">{LIBELLE_NATURE[pr.nature]}{pr.description ? ` · ${pr.description}` : ""}</p>
+                  {pr.description ? <p className="text-sm text-muet">{pr.description}</p> : null}
                 </div>
                 <p className="shrink-0 text-lg font-bold tabular-nums">{euros(pr.prix_unitaire)} <span className="text-sm font-normal text-muet">/ {pr.unite}</span></p>
                 <IcoPlus className="shrink-0 text-accent" />

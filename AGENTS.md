@@ -3,6 +3,7 @@
 Voir README.md pour le périmètre fonctionnel et DEPLOIEMENT.md pour la mise en route.
 
 - **Langue** : tout en français (code, commentaires, UI). Vocabulaire UI : devis, facture, client, prestation, chantier, acompte, solde, avoir.
+- **Périmètre voulu par l'utilisateur : le strict minimum.** Faire un devis ou une facture, l'envoyer, le retrouver. Pas de tableau de bord, pas de chiffre d'affaires, pas de suivi de paiements, rien à cocher. Demander avant d'ajouter un écran.
 - **Public** : un artisan peu à l'aise avec l'informatique. Gros boutons (`btn-*`), une action évidente par écran, jamais de jargon, confirmation avant toute action irréversible, sauvegarde automatique dans l'éditeur.
 - **Données** : un compte Supabase Auth = une entreprise. Toutes les tables ont `owner_id` avec une policy RLS `owner_id = auth.uid()`. Les routes API utilisent le client de session (`exigerSession()`), jamais la clé de service (sauf `scripts/seed.mjs`).
 - **Lignes** : JSON dans `documents.lignes` (`Ligne` dans `src/lib/types.ts`). Les totaux sont recalculés côté serveur (`colonnesTotaux`) à chaque modification et stockés pour les listes.

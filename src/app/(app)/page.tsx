@@ -3,21 +3,14 @@ import { chargerParametres, exigerSession } from "@/lib/acces";
 import BoutonNouveau from "@/components/BoutonNouveau";
 import ListeDocuments from "@/components/ListeDocuments";
 import { IcoFleche, IcoLoupe, IcoReglages } from "@/components/Icones";
-import { enRetard, euros } from "@/lib/format";
 import type { DocumentAvecClient } from "@/lib/types";
 
 export default async function Accueil() {
   const { supabase } = await exigerSession();
-  const [p, { data: recents }, { data: devisAttente }, { data: facturesDues }] = await Promise.all([
+  const [p, { data: recents }] = await Promise.all([
     chargerParametres(),
-    supabase.from("documents").select("id, type, sous_type, numero, statut, objet, date_document, date_echeance, net_a_payer, clients(id, nom, email, type)").order("updated_at", { ascending: false }).limit(8),
-    supabase.from("documents").select("net_a_payer").eq("type", "devis").eq("statut", "envoye"),
-    supabase.from("documents").select("net_a_payer, date_echeance").eq("type", "facture").eq("statut", "envoyee")
+    supabase.from("documents").select("id, type, sous_type, numero, statut, objet, date_document, date_echeance, net_a_payer, clients(id, nom, email, type)").order("updated_at", { ascending: false }).limit(10)
   ]);
-  const attente = (devisAttente ?? []) as { net_a_payer: number }[];
-  const dues = (facturesDues ?? []) as { net_a_payer: number; date_echeance: string | null }[];
-  const retard = dues.filter((f) => enRetard(f.date_echeance));
-  const somme = (l: { net_a_payer: number }[]) => l.reduce((s, x) => s + Number(x.net_a_payer), 0);
   const heure = new Date().getHours();
   const salut = heure < 18 ? "Bonjour" : "Bonsoir";
 
@@ -52,21 +45,6 @@ export default async function Accueil() {
           <button className="btn-secondaire px-5">Chercher</button>
         </div>
       </form>
-
-      <div className="mb-8 grid gap-3 sm:grid-cols-2">
-        <Link href="/devis?statut=envoye" className="carte hover:border-accent">
-          <p className="etiquette">Devis en attente de réponse</p>
-          <p className="text-3xl font-bold">{attente.length}</p>
-          <p className="text-muet">{euros(somme(attente))}</p>
-        </Link>
-        <Link href="/factures?statut=envoyee" className={`carte hover:border-accent ${retard.length ? "border-alerte" : ""}`}>
-          <p className="etiquette">Factures à encaisser</p>
-          <p className="text-3xl font-bold">{euros(somme(dues))}</p>
-          <p className={retard.length ? "font-semibold text-alerte" : "text-muet"}>
-            {dues.length} facture{dues.length > 1 ? "s" : ""}{retard.length ? ` · ${retard.length} en retard` : ""}
-          </p>
-        </Link>
-      </div>
 
       <h2 className="mb-3 text-xl font-bold">Derniers documents</h2>
       <ListeDocuments documents={(recents ?? []) as unknown as DocumentAvecClient[]} vide="Aucun document pour l'instant. Créez votre premier devis ci-dessus." />

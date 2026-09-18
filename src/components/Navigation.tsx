@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IcoCasque, IcoCatalogue, IcoClients, IcoDevis, IcoEuro, IcoFacture, IcoMaison, IcoReglages } from "@/components/Icones";
+import { IcoCasque, IcoCatalogue, IcoClients, IcoDevis, IcoFacture, IcoMaison, IcoReglages } from "@/components/Icones";
 
 const ONGLETS = [
   { href: "/", libelle: "Accueil", Ico: IcoMaison },
@@ -11,7 +11,6 @@ const ONGLETS = [
 ];
 const SECONDAIRES = [
   { href: "/catalogue", libelle: "Mes prestations", Ico: IcoCatalogue },
-  { href: "/recap", libelle: "Chiffre d'affaires", Ico: IcoEuro },
   { href: "/reglages", libelle: "Mon entreprise", Ico: IcoReglages }
 ];
 
