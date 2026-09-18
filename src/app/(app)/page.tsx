@@ -2,7 +2,7 @@ import Link from "next/link";
 import { chargerParametres, exigerSession } from "@/lib/acces";
 import BoutonNouveau from "@/components/BoutonNouveau";
 import ListeDocuments from "@/components/ListeDocuments";
-import { IcoFleche, IcoReglages } from "@/components/Icones";
+import { IcoFleche, IcoLoupe, IcoReglages } from "@/components/Icones";
 import { enRetard, euros } from "@/lib/format";
 import type { DocumentAvecClient } from "@/lib/types";
 
@@ -41,6 +41,17 @@ export default async function Accueil() {
         <BoutonNouveau type="devis" grand />
         <BoutonNouveau type="facture" grand className="btn-secondaire" />
       </div>
+
+      <form action="/recherche" className="mb-8">
+        <label className="etiquette" htmlFor="q">Retrouver un devis, une facture ou un client</label>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <IcoLoupe className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muet" />
+            <input id="q" name="q" className="champ pl-12" placeholder="Nom du client, chantier, numéro…" />
+          </div>
+          <button className="btn-secondaire px-5">Chercher</button>
+        </div>
+      </form>
 
       <div className="mb-8 grid gap-3 sm:grid-cols-2">
         <Link href="/devis?statut=envoye" className="carte hover:border-accent">

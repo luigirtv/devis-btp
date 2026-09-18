@@ -1,5 +1,5 @@
 import { Document as Pdf, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
-import { calculerTotaux, formatPourcent, totalLigne } from "@/lib/calculs";
+import { calculerTotaux, formatPourcent, montantsEcheancier, totalLigne } from "@/lib/calculs";
 import { dateFr, euros, nombre } from "@/lib/format";
 import type { ClientSnapshot, Document, Parametres } from "@/lib/types";
 
@@ -45,6 +45,9 @@ const s = StyleSheet.create({
 function adresse(a: { adresse: string; code_postal: string; ville: string }): string[] {
   return [a.adresse, `${a.code_postal} ${a.ville}`.trim()].filter(Boolean);
 }
+
+/** IBAN par groupes de quatre, plus facile à recopier. */
+const ibanLisible = (iban: string) => iban.replace(/\s/g, "").replace(/(.{4})/g, "$1 ").trim();
 
 function titrePdf(d: Document): string {
   if (d.type === "devis") return "DEVIS";
@@ -105,7 +108,7 @@ export default function DocumentPdf({ d, p, client }: { d: Document; p: Parametr
           </View>
           <View style={s.bloc}>
             <Text style={s.etiquette}>Lieu des travaux</Text>
-            <Text>{d.adresse_chantier || (client ? adresse(client).join(", ") : "—")}</Text>
+            <Text>{d.adresse_chantier || (client && adresse(client).join(", ")) || "À préciser"}</Text>
             {devis && d.date_debut_travaux && <Text style={{ marginTop: 4 }}>Début des travaux : {dateFr(d.date_debut_travaux)}</Text>}
             {devis && d.duree_travaux && <Text>Durée estimée : {d.duree_travaux}</Text>}
           </View>
@@ -157,15 +160,24 @@ export default function DocumentPdf({ d, p, client }: { d: Document; p: Parametr
           <View style={s.net}><Text>{devis ? "Montant du devis" : d.sous_type === "avoir" ? "Montant de l'avoir" : "Net à payer"}</Text><Text>{euros(t.net_a_payer)}</Text></View>
         </View>
 
-        {devis && d.acompte_pourcent === null && p.acompte_pourcent > 0 && (
-          <View style={s.section}><Text>Un acompte de {formatPourcent(p.acompte_pourcent)}, soit {euros(t.net_a_payer * p.acompte_pourcent / 100)}, sera demandé à l'acceptation du devis.</Text></View>
+        {(devis || (d.sous_type === "standard" && d.devis_id)) && p.echeancier.length > 0 && (
+          <View style={s.section} wrap={false}>
+            <Text style={s.sectionTitre}>Modalités de paiement</Text>
+            {montantsEcheancier(t.net_a_payer, p.echeancier).map((x, i) => (
+              <Text key={i}>•  {formatPourcent(x.pourcent)} {x.libelle} : {euros(x.montant)}</Text>
+            ))}
+            {devis && p.iban ? <Text style={{ marginTop: 5 }}>Règlement par virement : IBAN {ibanLisible(p.iban)}{p.bic ? ` – BIC ${p.bic}` : ""}</Text> : null}
+            {devis && !d.date_debut_travaux && (
+              <Text style={{ marginTop: 5 }}>La date de début des travaux sera fixée d'un commun accord, après signature du devis et versement de {p.echeancier.length > 1 ? `l'acompte de ${formatPourcent(p.echeancier[0].pourcent)}` : "l'acompte"}.</Text>
+            )}
+          </View>
         )}
 
         {!devis && d.sous_type !== "avoir" && (
           <View style={s.section} wrap={false}>
             <Text style={s.sectionTitre}>Règlement</Text>
             <Text>Paiement à réception, au plus tard le {dateFr(d.date_echeance)}{p.delai_paiement_jours ? ` (${p.delai_paiement_jours} jours)` : ""}.</Text>
-            {p.iban && <Text>Par virement : IBAN {p.iban}{p.bic ? ` – BIC ${p.bic}` : ""}</Text>}
+            {p.iban && <Text>Par virement : IBAN {ibanLisible(p.iban)}{p.bic ? ` – BIC ${p.bic}` : ""}</Text>}
           </View>
         )}
 

@@ -1,6 +1,6 @@
 // Données d'exemple pour les pages d'aperçu (hors production) : permet de voir les écrans sans base.
 import { ligneVide } from "@/lib/calculs";
-import type { Client, DocumentAvecClient, Parametres, Prestation } from "@/lib/types";
+import { ECHEANCIER_PAR_DEFAUT, type Client, type DocumentAvecClient, type Parametres, type Prestation } from "@/lib/types";
 
 export const PARAMETRES_EXEMPLE: Parametres = {
   owner_id: "exemple",
@@ -22,7 +22,8 @@ export const PARAMETRES_EXEMPLE: Parametres = {
   bic: "BNPAFRPP",
   validite_devis_jours: 30,
   delai_paiement_jours: 30,
-  acompte_pourcent: 30,
+  acompte_pourcent: 40,
+  echeancier: ECHEANCIER_PAR_DEFAUT,
   mentions_devis: "Devis gratuit. Les travaux commenceront à la date convenue après acceptation du devis et versement de l'acompte.",
   mentions_facture: "En cas de retard de paiement, des pénalités de retard au taux légal en vigueur sont exigibles, ainsi qu'une indemnité forfaitaire de 40 € pour frais de recouvrement pour les clients professionnels (art. L441-10 du Code de commerce). Pas d'escompte pour paiement anticipé.",
   logo_data: null,
@@ -60,7 +61,7 @@ export const DEVIS_EXEMPLE: DocumentAvecClient = {
   date_document: "2026-09-13",
   date_validite: "2026-10-13",
   date_echeance: null,
-  date_debut_travaux: "2026-10-05",
+  date_debut_travaux: null,
   duree_travaux: "2 semaines",
   lignes: [
     ligneVide({ id: "l1", genre: "titre", libelle: "Dépose" }),
@@ -96,14 +97,14 @@ export const FACTURE_EXEMPLE: DocumentAvecClient = {
   ...DEVIS_EXEMPLE,
   id: "55555555-5555-5555-5555-555555555555",
   type: "facture",
-  sous_type: "solde",
+  sous_type: "standard",
   numero: "F-2026-0007",
   statut: "envoyee",
   date_document: "2026-09-13",
   date_validite: null,
   date_echeance: "2026-10-13",
   devis_id: DEVIS_EXEMPLE.id,
-  deductions: [{ facture_id: "66666666-6666-6666-6666-666666666666", numero: "F-2026-0005", libelle: "Acompte déjà facturé (facture F-2026-0005)", montant_ttc: 367.35, repartition: { main_oeuvre: 242.25, fourniture: 125.1 } }],
-  net_a_payer: 857.15,
+  deductions: [],
+  net_a_payer: 1236.9,
   accepte_le: null
 };

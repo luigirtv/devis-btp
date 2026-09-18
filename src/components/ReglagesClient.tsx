@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { appeler } from "@/lib/api";
 import Erreur from "@/components/Erreur";
-import { IcoCheck } from "@/components/Icones";
+import { IcoCheck, IcoCroix } from "@/components/Icones";
 import type { Parametres } from "@/lib/types";
 
 /** Redimensionne une image en data URL (max 400 px, largement assez pour l'en-tête du PDF) pour la stocker avec les paramètres. */
@@ -45,6 +45,9 @@ export default function ReglagesClient({ parametres: initial }: { parametres: Pa
   const fichier = useRef<HTMLInputElement>(null);
   const maj: Maj = (cle) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setP({ ...p, [cle]: e.target.type === "number" ? Number(e.target.value) : e.target.value });
 
+  const totalEcheancier = p.echeancier.reduce((s, t) => s + (Number(t.pourcent) || 0), 0);
+  const majTranche = (i: number, partiel: Partial<Parametres["echeancier"][number]>) => setP({ ...p, echeancier: p.echeancier.map((t, j) => (j === i ? { ...t, ...partiel } : t)) });
+
   async function enregistrer(e: React.FormEvent) {
     e.preventDefault();
     setEtat("envoi");
@@ -52,7 +55,7 @@ export default function ReglagesClient({ parametres: initial }: { parametres: Pa
     try {
       const { owner_id: _o, ...corps } = p;
       void _o;
-      await appeler("/api/parametres", "PATCH", corps);
+      await appeler("/api/parametres", "PATCH", { ...corps, acompte_pourcent: p.echeancier[0]?.pourcent ?? corps.acompte_pourcent });
       setEtat("ok");
       router.refresh();
       setTimeout(() => setEtat("idle"), 2500);
@@ -114,10 +117,29 @@ export default function ReglagesClient({ parametres: initial }: { parametres: Pa
         <h2 className="text-lg font-bold">Paiement</h2>
         <Champ p={p} maj={maj} cle="iban" libelle="IBAN" aide="Affiché sur les factures pour le virement." />
         <Champ p={p} maj={maj} cle="bic" libelle="BIC" />
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Champ p={p} maj={maj} cle="delai_paiement_jours" libelle="Délai de paiement (jours)" type="number" min={0} max={365} />
           <Champ p={p} maj={maj} cle="validite_devis_jours" libelle="Validité des devis (jours)" type="number" min={1} max={365} />
-          <Champ p={p} maj={maj} cle="acompte_pourcent" libelle="Acompte habituel (%)" type="number" min={0} max={100} />
+        </div>
+        <div>
+          <span className="etiquette">Étapes de paiement d'un chantier</span>
+          <p className="mb-2 text-sm text-muet">Elles apparaissent sur chaque devis, et l'application vous propose la bonne facture à chaque étape. La dernière est la facture de solde.</p>
+          <ol className="flex flex-col gap-2">
+            {p.echeancier.map((t, i) => (
+              <li key={i} className="flex items-center gap-2">
+                <span className="relative w-24 shrink-0">
+                  <input className="champ champ-petit pr-7" type="number" min={1} max={100} value={t.pourcent} onChange={(e) => majTranche(i, { pourcent: Number(e.target.value) })} onFocus={(e) => e.target.select()} aria-label={`Pourcentage de l'étape ${i + 1}`} />
+                  <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-muet">%</span>
+                </span>
+                <input className="champ champ-petit" value={t.libelle} onChange={(e) => majTranche(i, { libelle: e.target.value })} placeholder="Ex. à la signature du devis" aria-label={`Libellé de l'étape ${i + 1}`} />
+                <button type="button" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-fond text-muet hover:text-erreur disabled:opacity-30" onClick={() => setP({ ...p, echeancier: p.echeancier.filter((_, j) => j !== i) })} disabled={p.echeancier.length <= 1} aria-label="Retirer cette étape"><IcoCroix /></button>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <button type="button" className="text-base font-semibold text-accent disabled:opacity-40" onClick={() => setP({ ...p, echeancier: [...p.echeancier, { libelle: "", pourcent: Math.max(1, 100 - totalEcheancier) }] })} disabled={p.echeancier.length >= 6}>+ Ajouter une étape</button>
+            <span className={`text-base font-semibold ${totalEcheancier === 100 ? "text-ok" : "text-erreur"}`}>Total : {totalEcheancier} %{totalEcheancier === 100 ? " ✓" : " (il faut 100 %)"}</span>
+          </div>
         </div>
       </section>
 

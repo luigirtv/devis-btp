@@ -26,6 +26,8 @@ create table if not exists parametres (
   validite_devis_jours int not null default 30,
   delai_paiement_jours int not null default 30,
   acompte_pourcent numeric(5,2) not null default 30,
+  -- étapes de paiement d'un chantier ; la dernière est la facture de solde (voir migration_2_echeancier.sql)
+  echeancier jsonb not null default '[{"libelle":"à la signature du devis","pourcent":40},{"libelle":"à la moitié des travaux","pourcent":40},{"libelle":"à la fin des travaux","pourcent":20}]'::jsonb,
   mentions_devis text not null default '',
   mentions_facture text not null default '',
   logo_data text,                                      -- data URL (png/jpeg redimensionné côté client)

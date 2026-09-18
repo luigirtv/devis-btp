@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { AccesRefuse } from "@/lib/acces";
-import { calculerTotaux, lignesAcompte, lignesAvoir, nouvelId } from "@/lib/calculs";
+import { calculerTotaux, intituleTranche, lignesAcompte, lignesAvoir, nouvelId } from "@/lib/calculs";
 import { ajouterJours, aujourdhui } from "@/lib/format";
 import type { Client, ClientSnapshot, Deduction, Document, DocumentAvecClient, Ligne, Parametres } from "@/lib/types";
 
@@ -41,10 +41,14 @@ export async function chargerDocument(supabase: SupabaseClient, id: string): Pro
   return data as unknown as DocumentAvecClient;
 }
 
-/** Un devis se modifie tant qu'il n'est pas accepté ; une facture, tant qu'elle n'a pas de numéro. */
+
+/**
+ * Un devis se modifie tant qu'il n'est pas accepté ; une facture, tant qu'elle n'est pas partie chez le client.
+ * Le numéro est attribué dès « Terminer » (plus de « brouillon » sur le PDF) : ce qui fige une facture, c'est son envoi.
+ */
 export function modifiable(d: Pick<Document, "type" | "statut" | "numero">): boolean {
   if (d.type === "devis") return d.statut === "brouillon" || d.statut === "envoye";
-  return d.numero === null && d.statut === "brouillon";
+  return d.statut === "brouillon";
 }
 
 export function totauxDe(d: Pick<Document, "lignes" | "remise_pourcent" | "deductions">, p: Pick<Parametres, "assujetti_tva">) {
@@ -90,7 +94,7 @@ export async function validerDocument(supabase: SupabaseClient, id: string): Pro
 
 type Creation =
   | { type: "devis" | "facture"; client_id?: string | null }
-  | { depuis_devis: string; mode: "acompte" | "solde" | "totale"; acompte_pourcent?: number }
+  | { depuis_devis: string; mode: "suivante" | "acompte" | "solde" | "totale"; acompte_pourcent?: number }
   | { avoir_de: string }
   | { dupliquer: string };
 
@@ -103,9 +107,24 @@ export async function creerDocument(supabase: SupabaseClient, p: Parametres, dem
     if (devis.type !== "devis") throw new AccesRefuse(400, "Le document source n'est pas un devis");
     if (!devis.numero) throw new AccesRefuse(400, "Validez le devis avant de le facturer");
     const commun = { type: "facture" as const, client_id: devis.client_id, objet: devis.objet, adresse_chantier: devis.adresse_chantier, devis_id: devis.id, date_document: jour, notes: "" };
-    if (demande.mode === "acompte") {
-      const pct = demande.acompte_pourcent ?? p.acompte_pourcent;
-      ligne = { ...commun, sous_type: "acompte", acompte_pourcent: pct, lignes: lignesAcompte(devis, pct, p.assujetti_tva), remise_pourcent: 0, deductions: [] };
+    // « suivante » : l'app choisit seule l'étape de l'échéancier, d'après les factures déjà faites sur ce devis.
+    let mode = demande.mode;
+    let tranche: { index: number; pourcent: number; intitule: string } | null = null;
+    if (mode === "suivante") {
+      const { data: faites } = await supabase.from("documents").select("sous_type, numero, statut").eq("devis_id", devis.id).eq("type", "facture").neq("statut", "annulee").neq("sous_type", "avoir");
+      const liste = (faites ?? []) as Pick<Document, "sous_type" | "numero" | "statut">[];
+      if (liste.some((f) => f.sous_type !== "acompte")) throw new AccesRefuse(409, "Ce devis est déjà entièrement facturé");
+      if (liste.some((f) => !f.numero)) throw new AccesRefuse(409, "Une facture de ce devis est encore en brouillon : envoyez-la ou supprimez-la avant de préparer la suivante");
+      const index = liste.length;
+      if (index < p.echeancier.length - 1) {
+        const t = p.echeancier[index];
+        tranche = { index, pourcent: t.pourcent, intitule: intituleTranche(t, index, devis.numero) };
+        mode = "acompte";
+      } else mode = "solde";
+    }
+    if (mode === "acompte") {
+      const pct = tranche?.pourcent ?? demande.acompte_pourcent ?? p.acompte_pourcent;
+      ligne = { ...commun, sous_type: "acompte", acompte_pourcent: pct, lignes: lignesAcompte(devis, pct, p.assujetti_tva, tranche?.intitule), remise_pourcent: 0, deductions: [] };
     } else {
       const { data: acomptes } = await supabase
         .from("documents")
@@ -121,7 +140,7 @@ export async function creerDocument(supabase: SupabaseClient, p: Parametres, dem
       });
       ligne = {
         ...commun,
-        sous_type: demande.mode === "solde" || deductions.length ? "solde" : "standard",
+        sous_type: mode === "solde" || deductions.length ? "solde" : "standard",
         lignes: devis.lignes.map((l) => ({ ...l, id: nouvelId() })),
         remise_pourcent: devis.remise_pourcent,
         deductions

@@ -43,6 +43,11 @@ export const schemaParametres = z.object({
   validite_devis_jours: z.coerce.number().int().min(1).max(365),
   delai_paiement_jours: z.coerce.number().int().min(0).max(365),
   acompte_pourcent: z.coerce.number().min(0).max(100),
+  echeancier: z
+    .array(z.object({ libelle: z.string().trim().min(1, "Chaque étape de paiement doit avoir un libellé").max(120), pourcent: z.coerce.number().min(1).max(100) }))
+    .min(1)
+    .max(6)
+    .refine((t) => Math.abs(t.reduce((s, x) => s + x.pourcent, 0) - 100) < 0.01, "Les étapes de paiement doivent faire 100 % au total"),
   mentions_devis: z.string().max(3000),
   mentions_facture: z.string().max(3000),
   logo_data: z.string().max(400_000).nullable(),

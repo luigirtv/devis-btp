@@ -3,14 +3,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { appeler } from "@/lib/api";
-import { calculerTotaux, formatPourcent, totalLigne } from "@/lib/calculs";
+import { calculerTotaux, formatPourcent, montantsEcheancier, totalLigne } from "@/lib/calculs";
 import { aujourdhui, dateFr, euros, nombre, titreDocument } from "@/lib/format";
-import { MODES_PAIEMENT, type ClientSnapshot, type DocumentAvecClient, type Parametres } from "@/lib/types";
+import type { ClientSnapshot, DocumentAvecClient, Parametres } from "@/lib/types";
 import EnTete from "@/components/EnTete";
 import BadgeStatut from "@/components/BadgeStatut";
 import Modale, { Confirmation } from "@/components/Modale";
 import Erreur from "@/components/Erreur";
-import { IcoCheck, IcoCopie, IcoCrayon, IcoCroix, IcoEnvoyer, IcoFleche, IcoPoubelle, IcoTelecharger } from "@/components/Icones";
+import { IcoCheck, IcoCopie, IcoCrayon, IcoCroix, IcoEnvoyer, IcoFacture, IcoFleche, IcoPoubelle, IcoTelecharger } from "@/components/Icones";
 
 function Bouton({ cle, enCours, className = "btn-secondaire", onClick, children }: { cle: string; enCours: string | null; className?: string; onClick: () => void; children: React.ReactNode }) {
   return <button type="button" className={className} onClick={onClick} disabled={enCours !== null}>{enCours === cle ? "Un instant…" : children}</button>;
@@ -22,17 +22,13 @@ export default function FicheDocument({ document: d, client, parametres: p, emai
   const router = useRouter();
   const [erreur, setErreur] = useState<string | null>(null);
   const [enCours, setEnCours] = useState<string | null>(null);
-  const [panneau, setPanneau] = useState<null | "envoi" | "paiement" | "supprimer" | "avoir" | "acompte" | "refuser">(null);
+  const [panneau, setPanneau] = useState<null | "envoi" | "supprimer" | "avoir" | "refuser" | "confirmer-envoi">(null);
   const [destinataire, setDestinataire] = useState(client?.email ?? "");
   const [message, setMessage] = useState("");
-  const [payeLe, setPayeLe] = useState(aujourdhui());
-  const [mode, setMode] = useState<string>(MODES_PAIEMENT[0]);
-  const [pourcent, setPourcent] = useState(String(p.acompte_pourcent));
-
+  const [succes, setSucces] = useState<string | null>(null);
   const devis = d.type === "devis";
   const t = calculerTotaux({ lignes: d.lignes, remise_pourcent: d.remise_pourcent, deductions: d.deductions, assujetti_tva: p.assujetti_tva });
   const pdfUrl = `/api/documents/${d.id}/pdf`;
-  const acomptesFactures = lies.filter((l) => l.type === "facture" && l.sous_type === "acompte" && l.statut !== "annulee" && l.numero);
   const soldeFacture = lies.find((l) => l.type === "facture" && (l.sous_type === "solde" || l.sous_type === "standard") && l.statut !== "annulee" && l.numero);
   const avoirExistant = lies.find((l) => l.sous_type === "avoir" && l.statut !== "annulee");
 
@@ -49,7 +45,22 @@ export default function FicheDocument({ document: d, client, parametres: p, emai
   }
   const statut = (s: string, extra: Record<string, unknown> = {}) => agir(s, async () => { await appeler(`/api/documents/${d.id}/statut`, "POST", { statut: s, ...extra }); setPanneau(null); router.refresh(); });
   const creer = (corps: unknown, cle: string) => agir(cle, async () => { const { id } = await appeler<{ id: string }>("/api/documents", "POST", corps); router.push(`/documents/${id}`); });
-  const envoyer = () => agir("envoi", async () => { await appeler(`/api/documents/${d.id}/envoyer`, "POST", { a: destinataire, message }); setPanneau(null); router.refresh(); });
+  const envoyer = (a: string = destinataire) => agir("envoi", async () => {
+    await appeler(`/api/documents/${d.id}/envoyer`, "POST", { a, message });
+    setPanneau(null);
+    setSucces(`C'est envoyé à ${a}. Vous en recevez une copie dans votre boîte e-mail.`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    router.refresh();
+  });
+  // Un seul appui quand tout est prêt : l'envoi automatique est branché et le client a une adresse.
+  // Seule une facture pas encore numérotée demande une confirmation, car l'envoi la fige définitivement.
+  const emailClient = (client?.email ?? "").trim();
+  const unClic = emailConfigure && emailClient !== "";
+  const appuiEnvoyer = () => {
+    if (!unClic) return setPanneau("envoi");
+    if (!devis && d.statut === "brouillon") return setPanneau("confirmer-envoi");
+    envoyer(emailClient);
+  };
   const supprimer = () => agir("supprimer", async () => { await appeler(`/api/documents/${d.id}`, "DELETE"); router.push(devis ? "/devis" : "/factures"); });
   const valider = () => agir("valider", async () => { await appeler(`/api/documents/${d.id}/valider`, "POST"); router.refresh(); });
 
@@ -58,7 +69,18 @@ export default function FicheDocument({ document: d, client, parametres: p, emai
   // ---------------------------------------------------------------- Actions selon l'état
   const actions: React.ReactNode[] = [];
   const btnPdf = <a key="pdf" href={pdfUrl} target="_blank" rel="noopener" className="btn-secondaire"><IcoTelecharger /> Voir le PDF</a>;
-  const btnEnvoyer = <Bouton enCours={enCours} key="envoyer" cle="ouvrir" className="btn-primaire" onClick={() => setPanneau("envoi")}><IcoEnvoyer /> {d.envoye_le ? "Renvoyer au client" : "Envoyer au client"}</Bouton>;
+  const btnEnvoyer = (
+    <div key="envoyer" className="flex flex-col gap-1">
+      <Bouton enCours={enCours} cle="envoi" className="btn-primaire min-h-16" onClick={appuiEnvoyer}>
+        <IcoEnvoyer />
+        <span className="flex min-w-0 flex-col items-start leading-tight">
+          <span>{d.envoye_le ? "Renvoyer au client par e-mail" : "Envoyer au client par e-mail"}</span>
+          {unClic && <span className="max-w-full truncate text-sm font-normal opacity-90">{emailClient}</span>}
+        </span>
+      </Bouton>
+      {unClic && <button type="button" className="self-center py-1 text-sm font-semibold text-accent" onClick={() => setPanneau("envoi")}>Envoyer à une autre adresse ou ajouter un message</button>}
+    </div>
+  );
   const btnModifier = <Link key="modifier" href={`/documents/${d.id}/modifier`} className="btn-secondaire"><IcoCrayon /> Modifier</Link>;
   const btnDupliquer = <Bouton enCours={enCours} key="dupliquer" cle="dupliquer" onClick={() => creer({ dupliquer: d.id }, "dupliquer")}><IcoCopie /> Refaire un {devis ? "devis" : "document"} identique</Bouton>;
   const btnSupprimer = <Bouton enCours={enCours} key="supprimer" cle="ouvrir-suppr" className="btn-danger" onClick={() => setPanneau("supprimer")}><IcoPoubelle /> Supprimer</Bouton>;
@@ -67,31 +89,29 @@ export default function FicheDocument({ document: d, client, parametres: p, emai
     if (d.statut === "brouillon") actions.push(btnEnvoyer, btnModifier, btnPdf, <Bouton enCours={enCours} key="accepte" cle="accepte" onClick={() => statut("accepte")}><IcoCheck /> Le client a déjà accepté</Bouton>, btnSupprimer);
     if (d.statut === "envoye") actions.push(<Bouton enCours={enCours} key="accepte" cle="accepte" className="btn-ok" onClick={() => statut("accepte")}><IcoCheck /> Le client a accepté</Bouton>, <Bouton enCours={enCours} key="refuse" cle="ouvrir-refus" onClick={() => setPanneau("refuser")}><IcoCroix /> Le client a refusé</Bouton>, btnEnvoyer, btnModifier, btnPdf);
     if (d.statut === "accepte") {
-      if (!soldeFacture) {
-        if (!acomptesFactures.length) actions.push(<Bouton enCours={enCours} key="acompte" cle="ouvrir-acompte" className="btn-primaire" onClick={() => setPanneau("acompte")}>Facture d'acompte</Bouton>);
-        actions.push(<Bouton enCours={enCours} key="solde" cle="solde" className={acomptesFactures.length ? "btn-primaire" : "btn-secondaire"} onClick={() => creer({ depuis_devis: d.id, mode: acomptesFactures.length ? "solde" : "totale" }, "solde")}>{acomptesFactures.length ? "Facture de solde" : "Facturer la totalité"}</Bouton>);
-      }
+      if (!soldeFacture) actions.push(<Bouton enCours={enCours} key="facturer" cle="totale" className="btn-primaire" onClick={() => creer({ depuis_devis: d.id, mode: "totale" }, "totale")}><IcoFacture /> Préparer la facture</Bouton>);
       actions.push(btnPdf, btnDupliquer, <Bouton enCours={enCours} key="refuse" cle="refuse" onClick={() => statut("refuse")}>Finalement refusé</Bouton>);
     }
     if (d.statut === "refuse") actions.push(btnDupliquer, btnPdf, <Bouton enCours={enCours} key="accepte" cle="accepte" onClick={() => statut("accepte")}>Finalement accepté</Bouton>);
   } else {
-    if (d.statut === "brouillon") actions.push(btnEnvoyer, btnModifier, btnPdf, <Bouton enCours={enCours} key="valider" cle="valider" onClick={valider}>Valider sans envoyer</Bouton>, btnSupprimer);
+    if (d.statut === "brouillon") actions.push(btnEnvoyer, btnModifier, btnPdf, ...(d.numero ? [<Bouton enCours={enCours} key="remise" cle="envoyee" onClick={() => statut("envoyee")}>Je l'ai remise au client autrement</Bouton>] : [<Bouton enCours={enCours} key="valider" cle="valider" onClick={valider}>Attribuer le numéro</Bouton>]), btnSupprimer);
     if (d.statut === "envoyee") actions.push(
-      d.sous_type === "avoir" ? <Bouton enCours={enCours} key="payee" cle="payee" className="btn-ok" onClick={() => statut("payee")}><IcoCheck /> Remboursement effectué</Bouton> : <Bouton enCours={enCours} key="payee" cle="ouvrir-paiement" className="btn-ok" onClick={() => setPanneau("paiement")}><IcoCheck /> Marquer comme payée</Bouton>,
+      d.sous_type === "avoir" ? <Bouton enCours={enCours} key="payee" cle="payee" className="btn-ok" onClick={() => statut("payee")}><IcoCheck /> Remboursement effectué</Bouton> : <Bouton enCours={enCours} key="payee" cle="payee" className="btn-ok" onClick={() => statut("payee")}><IcoCheck /> Le client a payé</Bouton>,
       btnEnvoyer, btnPdf
     );
-    if (d.statut === "payee") actions.push(btnPdf, btnEnvoyer, <Bouton enCours={enCours} key="impayee" cle="envoyee" onClick={() => statut("envoyee")}>Annuler le paiement</Bouton>);
+    if (d.statut === "payee") actions.push(btnPdf, btnEnvoyer, <Bouton enCours={enCours} key="impayee" cle="envoyee" onClick={() => statut("envoyee")}>{d.sous_type === "avoir" ? "Annuler le remboursement" : "Finalement pas encore payée"}</Bouton>);
     if (d.statut === "annulee") actions.push(btnPdf);
     if (d.numero && d.sous_type !== "avoir" && d.statut !== "annulee" && !avoirExistant) actions.push(<Bouton enCours={enCours} key="avoir" cle="ouvrir-avoir" className="btn-secondaire text-erreur" onClick={() => setPanneau("avoir")}>Annuler cette facture (avoir)</Bouton>);
   }
 
   return (
     <div>
-      <EnTete titre={titreDocument(d)} retour={devis ? "/devis" : "/factures"} retourLibelle={devis ? "Mes devis" : "Mes factures"} sousTitre={<BadgeStatut statut={d.statut} echeance={d.date_echeance} grand />} />
+      <EnTete titre={titreDocument(d)} retour={devis ? "/devis" : "/factures"} retourLibelle={devis ? "Mes devis" : "Mes factures"} sousTitre={<BadgeStatut statut={d.statut} echeance={d.date_echeance} numerote={Boolean(d.numero)} grand />} />
       <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-5 md:px-8">
         <Erreur message={erreur} />
+        {succes && <p role="status" className="flex items-center gap-2 rounded-xl bg-ok-fond px-4 py-3 text-lg font-semibold text-ok"><IcoCheck className="shrink-0" /> {succes}</p>}
         {!d.numero && (
-          <p className="rounded-xl bg-alerte-fond px-4 py-3 text-alerte">Ce document est un brouillon : il recevra son numéro définitif quand vous l'enverrez ou le validerez.</p>
+          <p className="rounded-xl bg-alerte-fond px-4 py-3 text-alerte">Ce document n'est pas terminé : ouvrez « Modifier », complétez-le puis appuyez sur « Terminer » pour qu'il reçoive son numéro.</p>
         )}
         {d.statut === "envoyee" && d.date_echeance && d.date_echeance < aujourdhui() && (
           <p className="rounded-xl bg-alerte-fond px-4 py-3 font-semibold text-alerte">Cette facture devait être payée avant le {dateFr(d.date_echeance)}. Pensez à relancer le client.</p>
@@ -106,7 +126,7 @@ export default function FicheDocument({ document: d, client, parametres: p, emai
               {client?.telephone && <p className="text-muet">{client.telephone}</p>}
             </div>
             <div className="text-right">
-              <p className="etiquette">{devis ? "Montant" : d.sous_type === "avoir" ? "Montant de l'avoir" : "Net à payer"}</p>
+              <p className="etiquette">{devis ? "Montant" : d.sous_type === "avoir" ? "Montant de l'avoir" : "Montant de la facture"}</p>
               <p className="text-3xl font-bold tabular-nums">{euros(t.net_a_payer)}</p>
             </div>
           </div>
@@ -124,6 +144,20 @@ export default function FicheDocument({ document: d, client, parametres: p, emai
 
         <section className="flex flex-col gap-2">{actions}</section>
 
+        {(devis || (d.sous_type === "standard" && d.devis_id)) && p.echeancier.length > 1 && (
+          <section className="carte">
+            <h2 className="mb-2 text-lg font-bold">Modalités de paiement</h2>
+            <ul className="flex flex-col gap-1 text-lg">
+              {montantsEcheancier(t.net_a_payer, p.echeancier).map((e, i) => (
+                <li key={i} className="flex items-baseline justify-between gap-3">
+                  <span>{formatPourcent(e.pourcent)} {e.libelle}</span>
+                  <span className="shrink-0 font-semibold tabular-nums">{euros(e.montant)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {lies.length > 0 && (
           <section className="carte">
             <h2 className="mb-2 text-lg font-bold">{devis ? "Factures de ce devis" : "Documents liés"}</h2>
@@ -132,7 +166,7 @@ export default function FicheDocument({ document: d, client, parametres: p, emai
                 <li key={l.id}>
                   <Link href={`/documents/${l.id}`} className="flex items-center gap-3 rounded-xl border border-ligne px-4 py-3 hover:border-accent">
                     <span className="flex-1 font-semibold">{titreDocument(l)}</span>
-                    <BadgeStatut statut={l.statut} />
+                    <BadgeStatut statut={l.statut} numerote={Boolean(l.numero)} />
                     <span className="tabular-nums">{euros(l.net_a_payer)}</span>
                     <IcoFleche className="text-muet" />
                   </Link>
@@ -186,8 +220,8 @@ export default function FicheDocument({ document: d, client, parametres: p, emai
               <span className="etiquette">Message (facultatif)</span>
               <textarea className="champ" rows={4} value={message} onChange={(e) => setMessage(e.target.value)} placeholder={`Bonjour,\nVeuillez trouver ci-joint ${devis ? "le devis" : "la facture"}…`} />
             </label>
-            <p className="mt-2 text-sm text-muet">Le PDF sera joint automatiquement. Le client pourra vous répondre sur {p.email || "votre adresse"}.</p>
-            <Bouton enCours={enCours} cle="envoi" className="btn-primaire mt-4 w-full" onClick={envoyer}><IcoEnvoyer /> Envoyer maintenant</Bouton>
+            <p className="mt-2 text-sm text-muet">Le PDF sera joint automatiquement. L'e-mail part de votre propre boîte : le client vous répond directement.</p>
+            <Bouton enCours={enCours} cle="envoi" className="btn-primaire mt-4 w-full" onClick={() => envoyer()}><IcoEnvoyer /> Envoyer maintenant</Bouton>
           </>
         ) : (
           <div className="mt-4 flex flex-col gap-3">
@@ -200,40 +234,8 @@ export default function FicheDocument({ document: d, client, parametres: p, emai
         )}
       </Modale>
 
-      {/* ---------------------------------------------------------------- Paiement */}
-      <Modale titre="Facture payée" ouvert={panneau === "paiement"} fermer={() => setPanneau(null)}>
-        <p className="mb-4 text-lg">Le client a réglé <strong>{euros(t.net_a_payer)}</strong>.</p>
-        <label>
-          <span className="etiquette">Reçu le</span>
-          <input className="champ" type="date" value={payeLe} onChange={(e) => setPayeLe(e.target.value)} max={aujourdhui()} />
-        </label>
-        <div className="mt-3">
-          <span className="etiquette">Comment ?</span>
-          <div className="grid grid-cols-2 gap-2">
-            {MODES_PAIEMENT.map((m) => (
-              <button key={m} type="button" onClick={() => setMode(m)} className={`btn-secondaire btn-petit ${mode === m ? "border-accent bg-accent-fond text-accent-fonce" : ""}`}>{m}</button>
-            ))}
-          </div>
-        </div>
-        <Bouton enCours={enCours} cle="payee" className="btn-ok mt-5 w-full" onClick={() => statut("payee", { paye_le: payeLe, mode_paiement: mode })}><IcoCheck /> C'est payé</Bouton>
-      </Modale>
 
-      {/* ---------------------------------------------------------------- Acompte */}
-      <Modale titre="Facture d'acompte" ouvert={panneau === "acompte"} fermer={() => setPanneau(null)}>
-        <p className="mb-4 text-lg">Quel pourcentage du devis ({euros(t.net_a_payer)}) demandez-vous maintenant ?</p>
-        <div className="mb-3 grid grid-cols-4 gap-2">
-          {[20, 30, 40, 50].map((x) => (
-            <button key={x} type="button" onClick={() => setPourcent(String(x))} className={`btn-secondaire btn-petit ${pourcent === String(x) ? "border-accent bg-accent-fond text-accent-fonce" : ""}`}>{x} %</button>
-          ))}
-        </div>
-        <label>
-          <span className="etiquette">Ou un autre pourcentage</span>
-          <input className="champ" type="number" min="1" max="100" value={pourcent} onChange={(e) => setPourcent(e.target.value)} />
-        </label>
-        <p className="mt-3 text-lg">Montant de l'acompte : <strong>{euros((t.net_a_payer * (Number(pourcent) || 0)) / 100)}</strong></p>
-        <Bouton enCours={enCours} cle="acompte" className="btn-primaire mt-4 w-full" onClick={() => creer({ depuis_devis: d.id, mode: "acompte", acompte_pourcent: Number(pourcent) }, "acompte")}>Préparer la facture d'acompte</Bouton>
-      </Modale>
-
+      <Confirmation ouvert={panneau === "confirmer-envoi"} titre="Envoyer cette facture ?" message={<>Elle part à <strong>{emailClient}</strong>. Une fois envoyée, elle ne pourra plus être modifiée.</>} libelleOui="Oui, envoyer" enCours={enCours === "envoi"} oui={() => envoyer(emailClient)} non={() => setPanneau(null)} />
       <Confirmation ouvert={panneau === "supprimer"} titre="Supprimer ce brouillon ?" message="Le document sera définitivement supprimé." libelleOui="Oui, supprimer" danger enCours={enCours === "supprimer"} oui={supprimer} non={() => setPanneau(null)} />
       <Confirmation ouvert={panneau === "refuser"} titre="Le client a refusé ce devis ?" message="Le devis sera classé comme refusé. Vous pourrez toujours en refaire un identique." libelleOui="Oui, refusé" enCours={enCours === "refuse"} oui={() => statut("refuse")} non={() => setPanneau(null)} />
       <Confirmation

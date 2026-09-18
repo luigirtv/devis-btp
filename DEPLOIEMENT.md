@@ -27,15 +27,37 @@ http://localhost:3000 → se connecter → « Mon entreprise » : remplir nom, a
 
 Le seed ajoute un catalogue de départ (main-d'œuvre, carrelage, peinture…) à adapter dans « Mes prestations ».
 
-## 3. E-mail (facultatif mais recommandé)
+## 3. E-mail : envoi depuis sa propre boîte
 
-Sans configuration, le bouton « Envoyer au client » propose de télécharger le PDF puis d'ouvrir la messagerie du téléphone/PC. C'est déjà utilisable.
+Le bouton « Envoyer au client par e-mail » envoie le PDF **depuis la boîte de l'artisan** : c'est lui l'expéditeur, le client lui répond directement, et il reçoit une copie. Aucun prestataire d'envoi.
 
-Pour l'envoi automatique avec le PDF joint :
-1. Compte https://www.brevo.com (gratuit jusqu'à 300 e-mails/jour).
-2. **Senders & IP** : ajouter et vérifier l'adresse d'expédition (idéalement celle de l'artisan, sinon une adresse à toi ; les réponses du client arrivent de toute façon chez l'artisan grâce au « répondre à »).
-3. **SMTP & API → API Keys** : créer une clé.
-4. `BREVO_API_KEY` et `EMAIL_EXPEDITEUR` dans `.env.local` puis dans Vercel.
+Il faut une seule fois un **mot de passe d'application** (un mot de passe spécial, différent du sien, que la boîte génère pour un logiciel) :
+
+| Boîte | Où le créer |
+|---|---|
+| Gmail | myaccount.google.com → Sécurité → activer la validation en deux étapes → « Mots de passe des applications » |
+| Microsoft (live.fr, hotmail, outlook) | account.microsoft.com → Sécurité → Options de sécurité avancées → activer la vérification en deux étapes → « Créer un mot de passe d'application ». **Attention : Microsoft ferme progressivement cet accès sur les boîtes personnelles. Si le test échoue, voir plus bas.** |
+| Orange | Espace client → Mail → le mot de passe de la messagerie convient |
+| Free, SFR, La Poste, Yahoo, iCloud | réglages de sécurité de la boîte, rubrique mots de passe d'application |
+
+Puis, dans `.env.local` :
+
+```
+SMTP_USER=son.adresse@exemple.fr
+SMTP_PASS=le-mot-de-passe-d-application
+```
+
+et tester tout de suite :
+
+```bash
+npm run test:email
+```
+
+Le script dit « Connexion acceptée » et lui envoie un e-mail d'essai, ou explique en clair ce qui bloque. Quand ça passe, recopier `SMTP_USER` et `SMTP_PASS` dans Vercel (Settings → Environment Variables) et redéployer. Le serveur d'envoi est deviné d'après l'adresse ; pour une boîte professionnelle, ajouter `SMTP_HOST` et `SMTP_PORT`.
+
+**Si sa boîte refuse** (cas probable avec une adresse Microsoft personnelle) : créer une adresse Gmail pour l'entreprise, par exemple `renov.martin@gmail.com`, y créer le mot de passe d'application, et l'utiliser comme `SMTP_USER`. Mettre sa vraie adresse dans « Mon entreprise » : les réponses des clients et la copie de chaque envoi y arrivent quand même.
+
+Sans ces variables, le bouton propose de télécharger le PDF puis d'ouvrir la messagerie : utilisable, mais il doit joindre le fichier lui-même.
 
 ## 4. Vercel
 

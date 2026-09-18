@@ -4,19 +4,20 @@ import BoutonNouveau from "@/components/BoutonNouveau";
 import ListeDocuments from "@/components/ListeDocuments";
 import { IcoLoupe } from "@/components/Icones";
 import { exigerSession } from "@/lib/acces";
-import type { DocumentAvecClient, TypeDocument } from "@/lib/types";
+import { rechercherDocuments } from "@/lib/recherche";
+import type { TypeDocument } from "@/lib/types";
 
 const FILTRES: Record<TypeDocument, { valeur: string; libelle: string }[]> = {
   devis: [
     { valeur: "", libelle: "Tous" },
-    { valeur: "brouillon", libelle: "Brouillons" },
+    { valeur: "brouillon", libelle: "Pas encore envoyés" },
     { valeur: "envoye", libelle: "En attente" },
     { valeur: "accepte", libelle: "Acceptés" },
     { valeur: "refuse", libelle: "Refusés" }
   ],
   facture: [
     { valeur: "", libelle: "Toutes" },
-    { valeur: "brouillon", libelle: "Brouillons" },
+    { valeur: "brouillon", libelle: "Pas encore envoyés" },
     { valeur: "envoyee", libelle: "À encaisser" },
     { valeur: "payee", libelle: "Payées" },
     { valeur: "annulee", libelle: "Annulées" }
@@ -27,18 +28,7 @@ const FILTRES: Record<TypeDocument, { valeur: string; libelle: string }[]> = {
 export default async function PageListe({ type, searchParams }: { type: TypeDocument; searchParams: Promise<{ statut?: string; q?: string }> }) {
   const { statut = "", q = "" } = await searchParams;
   const { supabase } = await exigerSession();
-  let requete = supabase.from("documents").select("*, clients(id, nom, email, type)").eq("type", type).order("date_document", { ascending: false }).order("created_at", { ascending: false }).limit(200);
-  if (statut) requete = requete.eq("statut", statut);
-  if (q.trim()) requete = requete.or(`objet.ilike.%${q.trim()}%,numero.ilike.%${q.trim()}%`);
-  const { data } = await requete;
-  let documents = (data ?? []) as unknown as DocumentAvecClient[];
-  // La recherche par nom de client se fait ici (jointure non filtrable simplement côté PostgREST).
-  if (q.trim()) {
-    const { data: parClient } = await supabase.from("documents").select("*, clients!inner(id, nom, email, type)").eq("type", type).ilike("clients.nom", `%${q.trim()}%`).limit(200);
-    const ids = new Set(documents.map((d) => d.id));
-    for (const d of (parClient ?? []) as unknown as DocumentAvecClient[]) if (!ids.has(d.id) && (!statut || d.statut === statut)) documents.push(d);
-    documents = documents.sort((a, b) => (a.date_document < b.date_document ? 1 : -1));
-  }
+  const documents = await rechercherDocuments(supabase, q, { type, statut: statut || undefined });
   const base = type === "devis" ? "/devis" : "/factures";
   const titre = type === "devis" ? "Mes devis" : "Mes factures";
 

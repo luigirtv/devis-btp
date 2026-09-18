@@ -56,6 +56,15 @@ export type Prestation = {
   actif: boolean;
 };
 
+/** Une étape de paiement du chantier. La dernière de la liste correspond à la facture de solde. */
+export type Tranche = { libelle: string; pourcent: number };
+
+export const ECHEANCIER_PAR_DEFAUT: Tranche[] = [
+  { libelle: "à la signature du devis", pourcent: 40 },
+  { libelle: "à la moitié des travaux", pourcent: 40 },
+  { libelle: "à la fin des travaux", pourcent: 20 }
+];
+
 export type Parametres = {
   owner_id: string;
   nom_entreprise: string;
@@ -77,6 +86,7 @@ export type Parametres = {
   validite_devis_jours: number;
   delai_paiement_jours: number;
   acompte_pourcent: number;
+  echeancier: Tranche[];
   mentions_devis: string;
   mentions_facture: string;
   logo_data: string | null;

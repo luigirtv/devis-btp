@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { calculerTotaux, lignesAcompte, lignesAvoir, ligneVide, totalLigne } from "../../src/lib/calculs.ts";
+import { calculerTotaux, intituleTranche, lignesAcompte, lignesAvoir, ligneVide, montantsEcheancier, totalLigne } from "../../src/lib/calculs.ts";
 
 const mo = ligneVide({ libelle: "Pose carrelage", quantite: 20, unite: "m²", prix_unitaire: 45, nature: "main_oeuvre", tva: 10 });
 const four = ligneVide({ libelle: "Carrelage grès", quantite: 22, unite: "m²", prix_unitaire: 30, nature: "fourniture", tva: 20 });
@@ -48,4 +48,19 @@ const avoir = lignesAvoir({ lignes: [titre, mo] });
 assert.equal(calculerTotaux({ lignes: avoir }).total_ttc, -900);
 assert.equal(avoir[0].genre, "titre");
 
-console.log("calculs : 22 assertions OK");
+// Échéancier 40 / 40 / 20 : la dernière étape absorbe les centimes, la somme fait le total
+const ech = [{ libelle: "à la signature du devis", pourcent: 40 }, { libelle: "à la moitié des travaux", pourcent: 40 }, { libelle: "à la fin des travaux", pourcent: 20 }];
+assert.deepEqual(montantsEcheancier(1236.9, ech).map((x) => x.montant), [494.76, 494.76, 247.38]);
+const bancal = montantsEcheancier(100.01, ech).map((x) => x.montant);
+assert.deepEqual(bancal, [40, 40, 20.01]);
+assert.equal(bancal.reduce((a, b) => a + b, 0).toFixed(2), "100.01");
+assert.equal(intituleTranche(ech[0], 0, "D-2026-0003"), "Acompte de 40 % à la signature du devis – devis D-2026-0003");
+assert.equal(intituleTranche(ech[1], 1, "D-2026-0003"), "Paiement intermédiaire de 40 % à la moitié des travaux – devis D-2026-0003");
+// Deux acomptes de 40 % puis le solde : il reste bien 20 %
+const a40 = lignesAcompte({ lignes: [mo, four], remise_pourcent: 0, numero: "D-1" }, 40, false, "Acompte de 40 %");
+const tA = calculerTotaux({ lignes: a40 });
+assert.equal(tA.total_ttc, 624);
+const ded = (n) => ({ facture_id: n, numero: n, libelle: n, montant_ttc: tA.total_ttc, repartition: tA.repartition });
+assert.equal(calculerTotaux({ lignes: [mo, four], deductions: [ded("F1"), ded("F2")] }).net_a_payer, 312);
+
+console.log("calculs : 29 assertions OK");

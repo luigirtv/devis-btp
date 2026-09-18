@@ -28,6 +28,7 @@ export default function EditeurDocument({ document: initial, clients: clientsIni
   const [remiseVisible, setRemiseVisible] = useState(Number(initial.remise_pourcent) > 0);
   const [details, setDetails] = useState<Set<string>>(() => new Set(initial.lignes.filter((l) => l.description).map((l) => l.id)));
   const [recherche, setRecherche] = useState("");
+  const [fin, setFin] = useState(false);
   const dernierEnvoye = useRef(JSON.stringify(extraire(initial)));
   const minuteur = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusLigne = useRef<string | null>(null);
@@ -96,10 +97,21 @@ export default function EditeurDocument({ document: initial, clients: clientsIni
     setRecherche("");
   };
 
+  // « Terminer » enregistre puis attribue le numéro : le PDF n'affiche jamais « brouillon » pour un document fini.
   async function terminer() {
     if (minuteur.current) clearTimeout(minuteur.current);
+    setFin(true);
     await enregistrer(doc);
-    router.push(`/documents/${initial.id}`);
+    if (!doc.client_id) { setFin(false); setErreur("Choisissez d'abord le client (étape 1)."); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    if (!doc.lignes.some((l) => l.genre === "prestation")) { setFin(false); setErreur("Ajoutez au moins une ligne de travaux ou de fourniture (étape 3)."); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    try {
+      if (!initial.numero) await appeler(`/api/documents/${initial.id}/valider`, "POST");
+      router.push(`/documents/${initial.id}`);
+    } catch (e) {
+      setFin(false);
+      setErreur((e as Error).message);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }
 
   const filtre = recherche.trim().toLowerCase();
@@ -162,16 +174,11 @@ export default function EditeurDocument({ document: initial, clients: clientsIni
             )}
           </div>
           {devis && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label>
-                <span className="etiquette">Début des travaux prévu</span>
-                <input className="champ" type="date" value={doc.date_debut_travaux ?? ""} onChange={(e) => maj({ date_debut_travaux: e.target.value || null })} />
-              </label>
-              <label>
-                <span className="etiquette">Durée estimée</span>
-                <input className="champ" value={doc.duree_travaux} onChange={(e) => maj({ duree_travaux: e.target.value })} placeholder="Ex. 2 semaines" />
-              </label>
-            </div>
+            <label>
+              <span className="etiquette">Durée estimée des travaux</span>
+              <input className="champ" value={doc.duree_travaux} onChange={(e) => maj({ duree_travaux: e.target.value })} placeholder="Ex. 2 semaines" />
+              <span className="mt-1 block text-sm text-muet">Pas de date de début sur le devis : elle se fixe avec le client une fois le devis signé et l'acompte versé.</span>
+            </label>
           )}
         </section>
 
@@ -294,8 +301,8 @@ export default function EditeurDocument({ document: initial, clients: clientsIni
             <p className="text-sm text-muet">{nbPrestations} ligne{nbPrestations > 1 ? "s" : ""}</p>
             <p className="text-2xl font-bold tabular-nums">{euros(totaux.net_a_payer)}</p>
           </div>
-          <button type="button" className="btn-primaire px-8" onClick={terminer} disabled={sauvegarde === "en_cours"}>
-            <IcoCheck /> Terminer
+          <button type="button" className="btn-primaire px-8" onClick={terminer} disabled={sauvegarde === "en_cours" || fin}>
+            <IcoCheck /> {fin ? "Un instant…" : "Terminer"}
           </button>
         </div>
       </div>

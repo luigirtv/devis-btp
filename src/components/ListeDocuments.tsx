@@ -15,7 +15,7 @@ export default function ListeDocuments({ documents, vide }: { documents: Documen
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-bold">{titreDocument(d)}</span>
-                <BadgeStatut statut={d.statut} echeance={d.date_echeance} />
+                <BadgeStatut statut={d.statut} echeance={d.date_echeance} numerote={Boolean(d.numero)} />
               </div>
               <p className="truncate text-lg">{d.clients?.nom ?? <span className="text-muet">Sans client</span>}{d.objet && <span className="text-muet"> · {d.objet}</span>}</p>
               <p className="text-sm text-muet">{dateFr(d.date_document)}</p>

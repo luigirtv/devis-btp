@@ -11,8 +11,8 @@ const COULEURS: Record<string, string> = {
   retard: "bg-alerte-fond text-alerte"
 };
 
-export default function BadgeStatut({ statut, echeance, grand = false }: { statut: string; echeance?: string | null; grand?: boolean }) {
+export default function BadgeStatut({ statut, echeance, numerote = false, grand = false }: { statut: string; echeance?: string | null; numerote?: boolean; grand?: boolean }) {
   const retard = statut === "envoyee" && enRetard(echeance);
-  const cle = retard ? "retard" : statut;
-  return <span className={`pastille ${COULEURS[cle] ?? COULEURS.brouillon} ${grand ? "px-3 py-1.5 text-base" : ""}`}>{retard ? "En retard" : LIBELLE_STATUT[statut] ?? statut}</span>;
+  const cle = retard ? "retard" : statut === "brouillon" && numerote ? "retard" : statut;
+  return <span className={`pastille ${COULEURS[cle] ?? COULEURS.brouillon} ${grand ? "px-3 py-1.5 text-base" : ""}`}>{retard ? "En retard" : statut === "brouillon" && numerote ? "À envoyer" : LIBELLE_STATUT[statut] ?? statut}</span>;
 }

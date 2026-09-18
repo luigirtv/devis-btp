@@ -4,7 +4,7 @@ import { creerDocument } from "@/lib/documents";
 
 const schema = z.union([
   z.object({ type: z.enum(["devis", "facture"]), client_id: z.string().uuid().nullable().optional() }),
-  z.object({ depuis_devis: z.string().uuid(), mode: z.enum(["acompte", "solde", "totale"]), acompte_pourcent: z.coerce.number().min(1).max(100).optional() }),
+  z.object({ depuis_devis: z.string().uuid(), mode: z.enum(["suivante", "acompte", "solde", "totale"]), acompte_pourcent: z.coerce.number().min(1).max(100).optional() }),
   z.object({ avoir_de: z.string().uuid() }),
   z.object({ dupliquer: z.string().uuid() })
 ]);

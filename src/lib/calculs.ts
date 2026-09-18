@@ -1,4 +1,4 @@
-import type { Deduction, Document, Ligne, Nature } from "./types";
+import type { Deduction, Document, Ligne, Nature, Tranche } from "./types";
 
 export const arrondir = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -70,7 +70,7 @@ export function ligneVide(partiel: Partial<Ligne> = {}): Ligne {
  * Lignes d'une facture d'acompte : un pourcentage du devis, une ligne par nature (et par taux de TVA)
  * pour que la répartition main-d'œuvre / fournitures reste juste dans la déclaration URSSAF.
  */
-export function lignesAcompte(devis: Pick<Document, "lignes" | "remise_pourcent" | "numero">, pourcent: number, assujetti_tva: boolean): Ligne[] {
+export function lignesAcompte(devis: Pick<Document, "lignes" | "remise_pourcent" | "numero">, pourcent: number, assujetti_tva: boolean, intitule?: string): Ligne[] {
   const tauxRemise = Math.min(100, Math.max(0, Number(devis.remise_pourcent) || 0)) / 100;
   const groupes = new Map<string, { nature: Nature; tva: number; ht: number }>();
   for (const l of devis.lignes) {
@@ -86,7 +86,7 @@ export function lignesAcompte(devis: Pick<Document, "lignes" | "remise_pourcent"
     .filter((g) => g.ht > 0)
     .map((g) =>
       ligneVide({
-        libelle: `Acompte de ${formatPourcent(pourcent)} sur le devis ${devis.numero ?? ""}`.trim() + (plusieurs ? ` – ${g.nature === "main_oeuvre" ? "main-d'œuvre" : "fournitures"}` : ""),
+        libelle: (intitule ?? `Acompte de ${formatPourcent(pourcent)} sur le devis ${devis.numero ?? ""}`).trim() + (plusieurs ? ` – ${g.nature === "main_oeuvre" ? "main-d'œuvre" : "fournitures"}` : ""),
         quantite: 1,
         unite: "forfait",
         prix_unitaire: arrondir((g.ht * pourcent) / 100),
@@ -103,4 +103,22 @@ export function lignesAvoir(facture: Pick<Document, "lignes">): Ligne[] {
 
 export function formatPourcent(p: number): string {
   return `${Number.isInteger(p) ? p : p.toFixed(1).replace(".", ",")} %`;
+}
+
+/**
+ * Montant de chaque étape de l'échéancier. La dernière absorbe les centimes d'arrondi,
+ * pour que la somme des étapes fasse exactement le total.
+ */
+export function montantsEcheancier(total: number, echeancier: Tranche[]): (Tranche & { montant: number })[] {
+  let reste = arrondir(total);
+  return echeancier.map((t, i) => {
+    const montant = i === echeancier.length - 1 ? reste : arrondir((total * t.pourcent) / 100);
+    reste = arrondir(reste - montant);
+    return { ...t, montant };
+  });
+}
+
+/** Intitulé de la facture d'une étape : « Acompte de 40 % à la signature du devis – devis D-2026-0003 ». */
+export function intituleTranche(t: Tranche, index: number, numeroDevis: string | null): string {
+  return `${index === 0 ? "Acompte" : "Paiement intermédiaire"} de ${formatPourcent(t.pourcent)} ${t.libelle}${numeroDevis ? ` – devis ${numeroDevis}` : ""}`;
 }
