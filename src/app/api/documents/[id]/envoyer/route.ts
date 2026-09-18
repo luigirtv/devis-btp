@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AccesRefuse, chargerParametres, exigerSession, reponseErreur } from "@/lib/acces";
+import { AccesRefuse, chargerParametresComplets, exigerSession, reponseErreur } from "@/lib/acces";
 import { chargerDocument, validerDocument } from "@/lib/documents";
 import { emailConfigure, envoyerEmail, nomFichierPdf } from "@/lib/email";
 import { titreDocument } from "@/lib/format";
@@ -17,7 +17,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/docu
     if (!emailConfigure()) throw new AccesRefuse(503, "L'envoi d'e-mail n'est pas configuré");
     const corps = schema.safeParse(await request.json());
     if (!corps.success) return Response.json({ error: corps.error.issues[0]?.message ?? "Demande invalide" }, { status: 400 });
-    const p = await chargerParametres();
+    const p = await chargerParametresComplets();
     const d = await validerDocument(supabase, id);
     const client = await clientDuDocument(supabase, d);
     const pdf = await genererPdf(d, p, client);

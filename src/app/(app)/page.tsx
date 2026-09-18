@@ -8,9 +8,9 @@ import type { DocumentAvecClient } from "@/lib/types";
 
 export default async function Accueil() {
   const { supabase } = await exigerSession();
-  const p = await chargerParametres();
-  const [{ data: recents }, { data: devisAttente }, { data: facturesDues }] = await Promise.all([
-    supabase.from("documents").select("*, clients(id, nom, email, type)").order("updated_at", { ascending: false }).limit(8),
+  const [p, { data: recents }, { data: devisAttente }, { data: facturesDues }] = await Promise.all([
+    chargerParametres(),
+    supabase.from("documents").select("id, type, sous_type, numero, statut, objet, date_document, date_echeance, net_a_payer, clients(id, nom, email, type)").order("updated_at", { ascending: false }).limit(8),
     supabase.from("documents").select("net_a_payer").eq("type", "devis").eq("statut", "envoye"),
     supabase.from("documents").select("net_a_payer, date_echeance").eq("type", "facture").eq("statut", "envoyee")
   ]);

@@ -5,8 +5,7 @@ import type { Prestation } from "@/lib/types";
 
 export default async function Catalogue() {
   const { supabase } = await exigerSession();
-  const p = await chargerParametres();
-  const { data } = await supabase.from("prestations").select("*").order("libelle");
+  const [p, { data }] = await Promise.all([chargerParametres(), supabase.from("prestations").select("*").order("libelle")]);
   return (
     <div>
       <EnTete titre="Mes prestations" />

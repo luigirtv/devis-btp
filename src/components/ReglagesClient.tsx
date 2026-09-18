@@ -6,13 +6,13 @@ import Erreur from "@/components/Erreur";
 import { IcoCheck } from "@/components/Icones";
 import type { Parametres } from "@/lib/types";
 
-/** Redimensionne une image en data URL (max 600 px) pour la stocker avec les paramètres. */
+/** Redimensionne une image en data URL (max 400 px, largement assez pour l'en-tête du PDF) pour la stocker avec les paramètres. */
 function lireLogo(fichier: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(fichier);
     const img = new Image();
     img.onload = () => {
-      const ratio = Math.min(1, 600 / Math.max(img.width, img.height));
+      const ratio = Math.min(1, 400 / Math.max(img.width, img.height));
       const c = document.createElement("canvas");
       c.width = Math.round(img.width * ratio);
       c.height = Math.round(img.height * ratio);

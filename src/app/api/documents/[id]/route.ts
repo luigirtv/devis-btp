@@ -16,8 +16,8 @@ export async function PATCH(request: Request, { params }: RouteContext<"/api/doc
   try {
     const { id } = await params;
     const { supabase } = await exigerSession();
-    const p = await chargerParametres();
-    const corps = schemaModification.safeParse(await request.json());
+    const [p, brut] = await Promise.all([chargerParametres(), request.json()]);
+    const corps = schemaModification.safeParse(brut);
     if (!corps.success) return Response.json({ error: messageZod(corps.error) }, { status: 400 });
     return Response.json(await modifierDocument(supabase, p, id, corps.data));
   } catch (e) {

@@ -60,12 +60,14 @@ export async function modifierDocument(supabase: SupabaseClient, p: Parametres, 
   const actuel = await chargerDocument(supabase, id);
   if (!modifiable(actuel)) throw new AccesRefuse(409, "Ce document est validé et ne peut plus être modifié");
   const fusion = { ...actuel, ...modif } as Document;
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("documents")
     .update({ ...modif, ...colonnesTotaux(fusion, p) })
-    .eq("id", id);
+    .eq("id", id)
+    .select(SELECT)
+    .single();
   if (error) throw error;
-  return chargerDocument(supabase, id);
+  return data as unknown as DocumentAvecClient;
 }
 
 function snapshot(c: Client | null): ClientSnapshot | null {

@@ -1,9 +1,9 @@
 import EnTete from "@/components/EnTete";
 import ReglagesClient from "@/components/ReglagesClient";
-import { chargerParametres } from "@/lib/acces";
+import { chargerParametresComplets } from "@/lib/acces";
 
 export default async function Reglages() {
-  const p = await chargerParametres();
+  const p = await chargerParametresComplets();
   return (
     <div>
       <EnTete titre="Mon entreprise" />

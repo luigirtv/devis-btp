@@ -1,4 +1,4 @@
-import { chargerParametres, exigerSession, reponseErreur } from "@/lib/acces";
+import { chargerParametresComplets, exigerSession, reponseErreur } from "@/lib/acces";
 import { chargerDocument } from "@/lib/documents";
 import { nomFichierPdf } from "@/lib/email";
 import { clientDuDocument, genererPdf } from "@/lib/pdf/generer";
@@ -10,7 +10,7 @@ export async function GET(request: Request, { params }: RouteContext<"/api/docum
   try {
     const { id } = await params;
     const { supabase } = await exigerSession();
-    const p = await chargerParametres();
+    const p = await chargerParametresComplets();
     const d = await chargerDocument(supabase, id);
     const pdf = await genererPdf(d, p, await clientDuDocument(supabase, d));
     const telecharger = new URL(request.url).searchParams.get("telecharger") === "1";
